@@ -3,38 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>App-Weiterleitung</title>
+  <title>App öffnen</title>
   <meta name="robots" content="noindex, nofollow">
   <style>
     html,body{height:100%;margin:0}
     body{font-family:system-ui,Arial,sans-serif;background:#0b0b0b;color:#fff;display:flex;align-items:center;justify-content:center}
-    .card{max-width:640px;padding:24px;text-align:center}
-    a.btn,button.btn{display:inline-block;margin-top:12px;padding:12px 16px;border-radius:10px;background:#1f6feb;color:#fff;border:0;font-weight:600;text-decoration:none}
+    .card{max-width:680px;padding:24px;text-align:center}
+    .btn{display:inline-block;margin:8px 6px;padding:12px 16px;border-radius:10px;background:#1f6feb;color:#fff;border:0;font-weight:600;text-decoration:none}
     p{opacity:.9}
     code{background:#111;padding:2px 6px;border-radius:6px}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Starte App …</h1>
-    <p id="status">Bitte einen Moment.</p>
-    <button id="openBtn" class="btn" style="display:none">App öffnen</button>
-    <p id="fallback" style="display:none">Falls es nicht klappt, öffne den Link manuell oder halte ihn gedrückt und wähle <code>In Chrome/Safari öffnen</code>.</p>
+    <h1>App starten</h1>
+    <p id="status">Tippe auf einen der Buttons unten.</p>
+
+    <a id="openBtn" class="btn" href="#">In Browser öffnen</a>
+    <a id="chromeIntent" class="btn" href="#" style="display:none">In Chrome öffnen (Android)</a>
+
+    <p id="fallback" style="margin-top:14px;opacity:.8">
+      Falls sich eine Google-/Drive-Seite meldet:
+      <br>• Halte den Link gedrückt → <code>In Chrome/Safari öffnen</code> wählen.<br>
+      • Oder kopiere den Link in die Adresszeile.
+    </p>
   </div>
 
   <script>
     const TARGET_TXT = "target.txt";
-
-    // einfache Erkennung „guter“ Browser (Chrome/Safari) vs. eingebettete WebViews (Google-App, Facebook, Instagram, Drive)
-    const ua = navigator.userAgent || "";
-    const isIOS = /iPad|iPhone|iPod/.test(ua);
-    const isSafari = isIOS ? /Safari/.test(ua) && !/CriOS|FxiOS/.test(ua) : /Safari/.test(ua) && !/Chrome/.test(ua);
-    const isChrome = /Chrome|CriOS/i.test(ua) && !/Edg|OPR/i.test(ua);
-    const looksLikeWebView =
-      /FBAN|FBAV|Instagram|GSA|GoogleApp|Line|WeChat|MiuiBrowser|wv/.test(ua) ||
-      (isIOS && !/Safari/.test(ua) && /AppleWebKit/.test(ua)); // iOS WebView
-
-    function setStatus(msg){ document.getElementById('status').textContent = msg; }
 
     async function getTarget() {
       const resp = await fetch(TARGET_TXT, { cache: "no-store" });
@@ -44,30 +40,37 @@
       return url;
     }
 
-    async function start() {
+    (async () => {
       try {
         const url = await getTarget();
+        const ua = navigator.userAgent || "";
+        const isAndroid = /Android/i.test(ua);
 
-        // Button immer anbieten
-        const btn = document.getElementById('openBtn');
-        btn.style.display = 'inline-block';
-        btn.onclick = () => { window.location.href = url; };
+        // Normaler Öffnen-Button -> gibt dem WebView einen echten User-Tap (öffnet meist externen Browser)
+        const openBtn = document.getElementById('openBtn');
+        openBtn.href = url;
+        openBtn.onclick = (e) => {
+          e.preventDefault();
+          // Versuche zuerst neuen Tab/Fenster:
+          const w = window.open(url, '_blank', 'noopener');
+          if (!w) {
+            // Fallback: same-window
+            window.location.href = url;
+          }
+        };
 
-        if (!looksLikeWebView && (isChrome || isSafari)) {
-          // In „echten“ Browsern direkt weiterleiten
-          setStatus("Leite weiter …");
-          // replace vermeidet Zurück-Navigation auf diese Seite
-          window.location.replace(url);
-        } else {
-          // In WebViews: Nutzer-Tap erzwingen (Button)
-          setStatus("Tippe auf „App öffnen“, um fortzufahren.");
-          document.getElementById('fallback').style.display = 'block';
+        // Android: Chrome-Intent-Link anbieten, der WebViews zuverlässig verlässt
+        if (isAndroid) {
+          const u = new URL(url);
+          const intent = `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.replace(':','')};package=com.android.chrome;end`;
+          const ci = document.getElementById('chromeIntent');
+          ci.style.display = 'inline-block';
+          ci.href = intent;
         }
       } catch (e) {
-        setStatus("Fehler: " + e.message);
+        document.getElementById('status').textContent = "Fehler: " + e.message;
       }
-    }
-    start();
+    })();
   </script>
 </body>
 </html>

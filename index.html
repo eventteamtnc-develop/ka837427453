@@ -1,70 +1,74 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Meine WebApp</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#111111">
-  <link rel="icon" href="/icons/icon-192.png" sizes="192x192">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>App öffnen</title>
+  <meta name="robots" content="noindex, nofollow">
   <style>
     html,body{height:100%;margin:0}
-    body{font-family:system-ui,Arial,sans-serif;background:#0b0b0b;color:#fff}
-    .bar{position:fixed;inset:0 0 auto 0;height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#111}
-    .bar h1{font-size:16px;margin:0;font-weight:600}
-    .frame{position:absolute;top:48px;left:0;right:0;bottom:0;border:0;width:100%;height:calc(100% - 48px)}
-    .btn{margin-left:auto;background:#1f6feb;border-radius:10px;padding:8px 12px;border:0;color:#fff}
+    body{font-family:system-ui,Arial,sans-serif;background:#0b0b0b;color:#fff;display:flex;align-items:center;justify-content:center}
+    .card{max-width:720px;padding:24px;text-align:center}
+    .btn{display:inline-block;margin:8px 6px;padding:12px 16px;border-radius:10px;background:#1f6feb;color:#fff;border:0;font-weight:600;text-decoration:none}
+    p{opacity:.9}
+    code{background:#111;padding:2px 6px;border-radius:6px}
   </style>
 </head>
 <body>
-  <div class="bar">
-    <h1>Meine WebApp</h1>
-    <button id="open" class="btn">In App öffnen</button>
+  <div class="card">
+    <h1>App starten</h1>
+    <p id="status">Tippe auf einen der Buttons unten.</p>
+
+    <a id="openBtn" class="btn" href="#">In Browser öffnen</a>
+    <a id="chromeIntent" class="btn" href="#" style="display:none">In Chrome öffnen (Android)</a>
+
+    <p id="fallback" style="margin-top:14px;opacity:.8">
+      Falls eine Google-/Drive-Meldung erscheint:
+      <br>• Halte den Link gedrückt → <code>In Chrome/Safari öffnen</code> wählen.<br>
+      • Oder kopiere den Link in die Adresszeile.
+    </p>
   </div>
 
-  <!-- Fallback-Strategie: Wenn iFrame blockiert ist, machen wir Location-Redirect -->
-  <iframe id="app" class="frame" allow="fullscreen" referrerpolicy="no-referrer-when-downgrade"></iframe>
-
   <script>
-    const APP_URL = "YOUR_EXEC_URL"; // z.B. https://script.google.com/macros/s/.../exec?authuser=0
+    const TARGET_TXT = "target.txt";
 
-    // 1) Versuche im iFrame zu laden (bequemer im „App-Frame“)
-    const frame = document.getElementById('app');
-    const openBtn = document.getElementById('open');
-    let frameLoaded = false;
+    async function getTarget() {
+      const resp = await fetch(TARGET_TXT, { cache: "no-store" });
+      if (!resp.ok) throw new Error("target.txt nicht gefunden");
+      const url = (await resp.text()).trim();
+      try { new URL(url); } catch { throw new Error("Ungültige URL in target.txt"); }
+      return url;
+    }
 
-    function tryLoadInFrame() {
-      frame.src = APP_URL;
-      const guard = setTimeout(() => {
-        if (!frameLoaded) {
-          // Vermutlich X-Frame-Options/CSP → direkt weiterleiten
-          window.location.replace(APP_URL);
+    (async () => {
+      try {
+        const url = await getTarget();
+        const ua = navigator.userAgent || "";
+        const isAndroid = /Android/i.test(ua);
+
+        // Button "In Browser öffnen" -> echter User-Tap, verlässt WebViews zuverlässig
+        const openBtn = document.getElementById('openBtn');
+        openBtn.href = url;
+        openBtn.onclick = (e) => {
+          e.preventDefault();
+          const w = window.open(url, '_blank', 'noopener');
+          if (!w) window.location.href = url;
+        };
+
+        // Android: Chrome-Intent-Link anbieten (umgeht Google/Drive/Lens-WebViews)
+        if (isAndroid) {
+          const u = new URL(url);
+          const intent = `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.replace(':','')};package=com.android.chrome;end`;
+          const ci = document.getElementById('chromeIntent');
+          ci.style.display = 'inline-block';
+          ci.href = intent;
         }
-      }, 1800);
-      frame.addEventListener('load', () => { frameLoaded = true; clearTimeout(guard); }, { once: true });
-    }
 
-    // 2) Button bietet immer den „direkten“ Open in neuem Tab
-    openBtn.addEventListener('click', () => {
-      window.location.href = APP_URL;
-    });
-
-    // 3) PWA Install prompt (optional)
-    let deferredPrompt=null;
-    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
-    // Du könntest hier noch einen „Installieren“-Button anzeigen.
-
-    // Start
-    tryLoadInFrame();
-
-    // Service Worker für PWA
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
-    }
+        document.getElementById('status').textContent = "Bereit.";
+      } catch (e) {
+        document.getElementById('status').textContent = "Fehler: " + e.message;
+      }
+    })();
   </script>
 </body>
 </html>

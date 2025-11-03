@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weiterleitung</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0b0b0b;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    a {
+      color: #4ea3ff;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <h1>Starte App …</h1>
+  <p id="info"></p>
+
+  <script>
+    async function redirect() {
+      try {
+        const resp = await fetch("target.txt", { cache: "no-store" });
+        if (!resp.ok) throw new Error("target.txt nicht gefunden");
+        const url = (await resp.text()).trim();
+        document.getElementById("info").innerHTML =
+          'Leite weiter zu:<br><a href="' + url + '">' + url + "</a>";
+        window.location.replace(url);
+      } catch (e) {
+        document.getElementById("info").textContent =
+          "Fehler: " + e.message;
+      }
+    }
+    redirect();
+  </script>
+</body>
+</html>

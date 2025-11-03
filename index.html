@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Meine WebApp</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#111111">
+  <link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+  <style>
+    html,body{height:100%;margin:0}
+    body{font-family:system-ui,Arial,sans-serif;background:#0b0b0b;color:#fff}
+    .bar{position:fixed;inset:0 0 auto 0;height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#111}
+    .bar h1{font-size:16px;margin:0;font-weight:600}
+    .frame{position:absolute;top:48px;left:0;right:0;bottom:0;border:0;width:100%;height:calc(100% - 48px)}
+    .btn{margin-left:auto;background:#1f6feb;border-radius:10px;padding:8px 12px;border:0;color:#fff}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <h1>Meine WebApp</h1>
+    <button id="open" class="btn">In App öffnen</button>
+  </div>
+
+  <!-- Fallback-Strategie: Wenn iFrame blockiert ist, machen wir Location-Redirect -->
+  <iframe id="app" class="frame" allow="fullscreen" referrerpolicy="no-referrer-when-downgrade"></iframe>
+
+  <script>
+    const APP_URL = "YOUR_EXEC_URL"; // z.B. https://script.google.com/macros/s/.../exec?authuser=0
+
+    // 1) Versuche im iFrame zu laden (bequemer im „App-Frame“)
+    const frame = document.getElementById('app');
+    const openBtn = document.getElementById('open');
+    let frameLoaded = false;
+
+    function tryLoadInFrame() {
+      frame.src = APP_URL;
+      const guard = setTimeout(() => {
+        if (!frameLoaded) {
+          // Vermutlich X-Frame-Options/CSP → direkt weiterleiten
+          window.location.replace(APP_URL);
+        }
+      }, 1800);
+      frame.addEventListener('load', () => { frameLoaded = true; clearTimeout(guard); }, { once: true });
+    }
+
+    // 2) Button bietet immer den „direkten“ Open in neuem Tab
+    openBtn.addEventListener('click', () => {
+      window.location.href = APP_URL;
+    });
+
+    // 3) PWA Install prompt (optional)
+    let deferredPrompt=null;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
+    // Du könntest hier noch einen „Installieren“-Button anzeigen.
+
+    // Start
+    tryLoadInFrame();
+
+    // Service Worker für PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+  </script>
+</body>
+</html>

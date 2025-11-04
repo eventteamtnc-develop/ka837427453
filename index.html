@@ -20,27 +20,39 @@
       color: #4ea3ff;
       word-break: break-all;
     }
+    button {
+      margin-top: 1em;
+      padding: 0.6em 1.2em;
+      border: none;
+      border-radius: 8px;
+      background-color: #4ea3ff;
+      color: #fff;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #70b8ff;
+    }
   </style>
 </head>
 <body>
-  <h1>Starte App …</h1>
-  <p id="info"></p>
+  <h1>App-Link anzeigen</h1>
+  <p id="info">Klicke auf den Button, um den Ziel-Link zu laden.</p>
+  <button onclick="loadLink()">Link laden</button>
 
   <script>
-    async function redirect() {
+    async function loadLink() {
+      const info = document.getElementById("info");
       try {
         const resp = await fetch("target.txt", { cache: "no-store" });
         if (!resp.ok) throw new Error("target.txt nicht gefunden");
         const url = (await resp.text()).trim();
-        document.getElementById("info").innerHTML =
-          'Leite weiter zu:<br><a href="' + url + '">' + url + "</a>";
-        window.location.replace(url);
+        info.innerHTML =
+          'Leite weiter zu:<br><a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + "</a>";
       } catch (e) {
-        document.getElementById("info").textContent =
-          "Fehler: " + e.message;
+        info.textContent = "Fehler: " + e.message;
       }
     }
-    redirect();
   </script>
 </body>
 </html>
